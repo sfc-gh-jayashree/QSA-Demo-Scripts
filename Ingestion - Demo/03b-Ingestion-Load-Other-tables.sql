@@ -1,0 +1,215 @@
+USE WAREHOUSE COMPUTE_WH;
+SELECT CURRENT_WAREHOUSE();
+
+USE ROLE SYSADMIN;
+SELECT CURRENT_ROLE();
+SHOW DATABASES;
+USE DATABASE DEMO;
+
+USE SCHEMA FILE_INGESTION_DEMO;
+
+-- ------------------------------------------------------------
+-- Load other files into stage
+-- ------------------------------------------------------------
+
+COPY INTO @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/LINEITEM/lineitem
+FROM (
+    SELECT *
+    FROM snowflake_sample_data.tpch_sf1.lineitem 
+  
+)
+HEADER=TRUE
+OVERWRITE=TRUE
+;
+
+COPY INTO @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/NATION/nation
+FROM (
+    SELECT *
+    FROM snowflake_sample_data.tpch_sf1.nation 
+  
+)
+HEADER=TRUE
+OVERWRITE=TRUE
+;
+
+COPY INTO @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/PART/part
+FROM (
+    SELECT *
+    FROM snowflake_sample_data.tpch_sf1.part
+  
+)
+HEADER=TRUE
+OVERWRITE=TRUE
+;
+
+COPY INTO @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/PARTSUPP/partsupp
+FROM (
+    SELECT *
+    FROM snowflake_sample_data.tpch_sf1.partsupp 
+  
+)
+HEADER=TRUE
+OVERWRITE=TRUE
+;
+
+COPY INTO @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/REGION/region
+FROM (
+    SELECT *
+    FROM snowflake_sample_data.tpch_sf1.region 
+  
+)
+HEADER=TRUE
+OVERWRITE=TRUE
+;
+
+-- ------------------------------------------------------------
+-- Load Raw Layer
+-- ------------------------------------------------------------
+--
+-- Load the orders table and review the output
+--    1.  Note the rows_parsed and the errors_seen
+
+TRUNCATE TABLE DEMO.FILE_INGESTION_DEMO.LINEITEM;
+TRUNCATE TABLE DEMO.FILE_INGESTION_DEMO.NATION;
+TRUNCATE TABLE DEMO.FILE_INGESTION_DEMO.PART;
+TRUNCATE TABLE DEMO.FILE_INGESTION_DEMO.PARTSUPP;
+TRUNCATE TABLE DEMO.FILE_INGESTION_DEMO.REGION;
+
+COPY INTO DEMO.FILE_INGESTION_DEMO.LINEITEM (L_ORDERKEY ,
+	L_PARTKEY ,
+	L_SUPPKEY ,
+	L_LINENUMBER ,
+	L_QUANTITY ,
+	L_EXTENDEDPRICE ,
+	L_DISCOUNT ,
+	L_TAX ,
+	L_RETURNFLAG ,
+	L_LINESTATUS ,
+	L_SHIPDATE ,
+	L_COMMITDATE ,
+	L_RECEIPTDATE ,
+	L_SHIPINSTRUCT ,
+	L_SHIPMODE ,
+	L_COMMENT ,
+    FILE_NAME,LOAD_DATETIME,LOAD_BY)
+FROM (
+    SELECT 
+        $1,
+        $2, 
+        $3, 
+        $4, 
+        $5, 
+        $6, 
+        $7, 
+        $8, 
+        $9, 
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        $16,
+        METADATA$FILENAME,
+        CURRENT_TIMESTAMP(),
+        CURRENT_USER() 
+    FROM @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/LINEITEM/     
+)
+FILE_FORMAT = DEMO.FILE_INGESTION_DEMO.TPCH_ORDERS_CSV
+ON_ERROR=CONTINUE
+;
+select COUNT(1) from lineitem; --6001215
+
+COPY INTO DEMO.FILE_INGESTION_DEMO.NATION (N_NATIONKEY ,
+	N_NAME ,
+	N_REGIONKEY ,
+	N_COMMENT , 
+    FILE_NAME,LOAD_DATETIME,LOAD_BY)
+FROM (
+    SELECT 
+        $1,
+        $2, 
+        $3, 
+        $4, 
+        METADATA$FILENAME,
+        CURRENT_TIMESTAMP(),
+        CURRENT_USER() 
+    FROM @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/NATION/     
+)
+FILE_FORMAT = DEMO.FILE_INGESTION_DEMO.TPCH_ORDERS_CSV
+ON_ERROR=CONTINUE
+;
+select * from nation;
+
+COPY INTO DEMO.FILE_INGESTION_DEMO.PART (P_PARTKEY ,
+	P_NAME ,
+	P_MFGR ,
+	P_BRAND ,
+	P_TYPE ,
+	P_SIZE ,
+	P_CONTAINER ,
+	P_RETAILPRICE ,
+	P_COMMENT , 
+    FILE_NAME,LOAD_DATETIME,LOAD_BY)
+FROM (
+    SELECT 
+        $1,
+        $2, 
+        $3, 
+        $4, 
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        METADATA$FILENAME,
+        CURRENT_TIMESTAMP(),
+        CURRENT_USER() 
+    FROM @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/PART/     
+)
+FILE_FORMAT = DEMO.FILE_INGESTION_DEMO.TPCH_ORDERS_CSV
+ON_ERROR=CONTINUE
+;
+select * from part;
+
+COPY INTO DEMO.FILE_INGESTION_DEMO.PARTSUPP (PS_PARTKEY ,
+	PS_SUPPKEY,
+	PS_AVAILQTY ,
+	PS_SUPPLYCOST ,
+	PS_COMMENT , 
+    FILE_NAME,LOAD_DATETIME,LOAD_BY)
+FROM (
+    SELECT 
+        $1,
+        $2, 
+        $3, 
+        $4, 
+        $5,
+        METADATA$FILENAME,
+        CURRENT_TIMESTAMP(),
+        CURRENT_USER() 
+    FROM @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/PARTSUPP/     
+)
+FILE_FORMAT = DEMO.FILE_INGESTION_DEMO.TPCH_ORDERS_CSV
+ON_ERROR=CONTINUE
+;
+select * from partsupp;
+
+COPY INTO DEMO.FILE_INGESTION_DEMO.REGION (R_REGIONKEY,
+	R_NAME ,
+	R_COMMENT , 
+    FILE_NAME,LOAD_DATETIME,LOAD_BY)
+FROM (
+    SELECT 
+        $1,
+        $2, 
+        $3, 
+        METADATA$FILENAME,
+        CURRENT_TIMESTAMP(),
+        CURRENT_USER() 
+    FROM @DEMO.FILE_INGESTION_DEMO.TPCH_INT_STG/REGION/     
+)
+FILE_FORMAT = DEMO.FILE_INGESTION_DEMO.TPCH_ORDERS_CSV
+ON_ERROR=CONTINUE
+;
+select * from region;
